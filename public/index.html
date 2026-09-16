@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Deception Multiplayer</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    body { background:#1a1a2e; color:white; font-family:sans-serif; text-align:center; padding:20px; }
+    .card-box { background: #16213e; border: 1px solid #0f3460; border-radius: 8px; padding: 15px; margin: 15px auto; max-width: 600px; }
+    button { padding:10px 20px; background:#e94560; color:white; border:none; cursor:pointer; border-radius: 5px;}
+    .secret-box { border-color: #e94560; background: #2a0813; }
+  </style>
+</head>
+<body>
+  <h1>Deception: Murder in Hong Kong</h1>
+  
+  <div id="login" class="card-box">
+    <input type="text" id="username" placeholder="Masukkan Nama Kamu" style="padding:10px;">
+    <button onclick="masukRoom()">Bergabung</button>
+  </div>
+
+  <div id="room" class="card-box" style="display:none;">
+    <h3>Pemain yang Terhubung:</h3>
+    <ul id="player-list" style="list-style:none; padding:0;"></ul>
+    <button onclick="mulaiServerGame()" id="btn-mulai" style="background:#4E9F3D; display:none;">Mulai Game</button>
+  </div>
+
+  <div id="game-area" style="display:none;">
+    <div class="card-box">
+      <h2>Peran Kamu: <span id="my-role" style="color:#e94560;"></span></h2>
+    </div>
+
+    <div id="solution-area" class="card-box secret-box" style="display:none;">
+      <h3>Kunci Jawaban (Hanya Pembunuh & Forensik):</h3>
+      <p id="solution-text"></p>
+    </div>
+
+    <div class="card-box">
+      <h3>Kartu di Meja:</h3>
+      <div id="all-cards-container" style="text-align:left;"></div>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+
+    function masukRoom() {
+      const name = document.getElementById('username').value;
+      if (name) {
+        socket.emit('joinGame', name);
+        document.getElementById('login').style.display = 'none';
+        document.getElementById('room').style.display = 'block';
+      }
+    }
+
+    function mulaiServerGame() {
+      socket.emit('startGame');
+    }
+
+    socket.on('updatePlayers', (players) => {
+      const list = document.getElementById('player-list');
+      list.innerHTML = '';
+      players.forEach(p => {
+        list.innerHTML += `<li style="padding:5px; background:#0f3460; margin:5px auto; max-width:200px; border-radius:5px;">👤 ${p.name}</li>`;
+      });
+      if(players.length >= 2) document.getElementById('btn-mulai').style.display = 'inline-block';
+    });
+
+    socket.on('gameStarted', (data) => {
+      document.getElementById('room').style.display = 'none';
+      document.getElementById('game-area').style.display = 'block';
+      document.getElementById('my-role').innerText = data.me.role;
+
+      if(data.solution) {
+        document.getElementById('solution-area').style.display = 'block';
+        document.getElementById('solution-text').innerText = `Senjata: ${data.solution.weapon} | Bukti: ${data.solution.evidence}`;
+      }
+
+      const container = document.getElementById('all-cards-container');
+      container.innerHTML = '';
+      data.allPlayers.forEach(p => {
+        let html = `<div style="margin-bottom:15px; border-bottom:1px solid #444; padding-bottom:10px;">
+                      <h4>Kartu Milik ${p.name}</h4>
+                      <p>🗡️ ${p.weapons.join(' | ')}</p>
+                      <p>🔍 ${p.evidence.join(' | ')}</p>
+                    </div>`;
+        container.innerHTML += html;
+      });
+    });
+  </script>
+</body>
+</html>
